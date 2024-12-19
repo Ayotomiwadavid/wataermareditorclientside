@@ -1,115 +1,94 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import * as fabric from "fabric";
 
 const WatermarkEditor = () => {
   const canvasRef = useRef(null);
   const [canvas, setCanvas] = useState(null);
+  const [isImageUploaded, setIsImageUploaded] = useState(false);
+  const [watermarkSettings, setWatermarkSettings] = useState({
+    text: "Your Watermark",
+    fontSize: 30,
+    fill: "#000000",
+  });
 
+  // Initialize canvas
   useEffect(() => {
-    if (canvasRef.current) {
-      // Initialize Fabric Canvas
-      const fabricCanvas = new fabric.Canvas(canvasRef.current, {
-        width: 500,
-        height: 500,
-      });
-
-      fabric.Image.fromURL("https://via.placeholder.com/800", (img) => {
-        console.log("Image loaded into Fabric:", img);
-
-        // Scale the image proportionally to fit the canvas
-        const scaleRatio = Math.min(
-          fabricCanvas.width / img.width,
-          fabricCanvas.height / img.height
-        );
-
-        img.scale(scaleRatio);
-
-        canvas.backgroundImage = img;
-        canvas.renderAll();
-
-        // Set background image and render canvas
-        // fabricCanvas.setBackgroundImage(
-        //   img,
-        //   fabricCanvas.renderAll.bind(fabricCanvas),
-        //   {
-        //     originX: "left",
-        //     originY: "top",
-        //   }
-        // );
-      });
-
-      setCanvas(fabricCanvas);
-
-      return () => {
-        fabricCanvas.dispose(); // Cleanup on unmount
-      };
-    }
+    const fabricCanvas = new fabric.Canvas(canvasRef.current, {
+      width: 800,
+      height: 500,
+      backgroundColor: "#f0f0f0",
+    });
+    setCanvas(fabricCanvas);
+    return () => fabricCanvas.dispose();
   }, []);
 
-
+  // Handle image upload
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
-
-    console.log(file)
-
     if (file && file.type.startsWith("image/")) {
       const reader = new FileReader();
 
       reader.onload = () => {
-        console.log('it has been loaded!!');
-
         const dataUrl = reader.result;
 
-        console.log(dataUrl.slice(0, 100)); // Logs only the first 100 characters
-
-        // fabric.Image.fromURL('https://via.placeholder.com/800', (img) => {
-
-        //   console.log("Image loaded into Fabric:", img);
-
-        //   // Scale the image proportionally to fit the canvas
-        //   const scaleRatio = Math.min(
-        //     canvas.width / img.width,
-        //     canvas.height / img.height
-        //   );
-
-
-        //   img.scale(scaleRatio);
-
-        //   // Set background image and render canvas
-        //   canvas.setBackgroundImage(
-        //     img,
-        //     canvas.renderAll.bind(canvas),
-        //     {
-        //       originX: "left",
-        //       originY: "top",
-        //     }
-        //   );
-        // });
+        fabric.Image.fromURL(dataUrl, (img) => {
+          canvas.clear();
+          const scaleRatio = Math.min(
+            canvas.width / img.width,
+            canvas.height / img.height
+          );
+          img.scale(scaleRatio);
+          canvas.add(img);
+          img.set({ selectable: false }); // Prevent image movement
+          canvas.sendToBack(img);
+          setIsImageUploaded(true);
+          canvas.renderAll();
+        });
       };
 
       reader.readAsDataURL(file);
     } else {
-      alert("Please upload a valid image file (e.g., .jpg, .png, .jpeg).");
+      alert("Please upload a valid image file (e.g., .jpg, .png).");
     }
   };
 
-  const addTextWatermark = () => {
-    if (!canvas) return;
+  // Handle watermark settings change
+  const handleWatermarkChange = (e) => {
+    const { name, value } = e.target;
+    setWatermarkSettings((prev) => ({
+      ...prev,
+      [name]: name === "fontSize" ? parseInt(value, 10) : value,
+    }));
+  };
 
-    const text = new fabric.Textbox("Your Watermark", {
+  // Add watermark
+  const addWatermark = () => {
+    if (!isImageUploaded) {
+      alert("Please upload an image before adding a watermark.");
+      return;
+    }
+
+    const { text, fontSize, fill } = watermarkSettings;
+
+    const watermark = new fabric.Textbox(text, {
       left: 50,
       top: 50,
-      fontSize: 30,
-      fill: "rgb(0, 0, 0)",
+      fontSize,
+      fill,
       selectable: true,
     });
 
-    canvas.add(text);
-    canvas.setActiveObject(text);
+    canvas.add(watermark);
+    canvas.setActiveObject(watermark);
+    canvas.renderAll();
   };
 
+  // Download final image
   const downloadImage = () => {
-    if (!canvas) return;
+    if (!isImageUploaded) {
+      alert("Please upload an image before downloading.");
+      return;
+    }
 
     const dataURL = canvas.toDataURL({
       format: "png",
@@ -123,32 +102,69 @@ const WatermarkEditor = () => {
   };
 
   return (
-    <div className="flex flex-col items-center p-4 w-4/5 h-lvh mt-5">
+    <div className="flex flex-col items-center p-6">
+      <h1 className="text-2xl font-bold mb-4">Watermark Editor</h1>
 
-      {/* File Upload */}
-      <input
-        type="file"
-        accept="image/*"
-        onChange={handleImageUpload}
-        className="mb-4"
-      />
+      {/* Upload Image */}
+      <div className="mb-4">
+        <input
+          type="file"
+          accept="image/*"
+          onChange={handleImageUpload}
+          className="border p-2"
+        />
+      </div>
 
       {/* Canvas */}
-      <div className="flex items-center justify-center">
-        <canvas id="canvas" ref={canvasRef} className="border" />
+      <div className="mb-4 border-2 border-gray-300">
+        <canvas ref={canvasRef} />
+      </div>
+
+      {/* Watermark Controls */}
+      <div className="flex flex-col gap-2 mb-4">
+        <div>
+          <label>Watermark Text:</label>
+          <input
+            type="text"
+            name="text"
+            value={watermarkSettings.text}
+            onChange={handleWatermarkChange}
+            className="border p-1 ml-2"
+          />
+        </div>
+        <div>
+          <label>Font Size:</label>
+          <input
+            type="number"
+            name="fontSize"
+            value={watermarkSettings.fontSize}
+            onChange={handleWatermarkChange}
+            className="border p-1 ml-2"
+          />
+        </div>
+        <div>
+          <label>Color:</label>
+          <input
+            type="color"
+            name="fill"
+            value={watermarkSettings.fill}
+            onChange={handleWatermarkChange}
+            className="ml-2"
+          />
+        </div>
       </div>
 
       {/* Buttons */}
-      <div className="mt-4 flex gap-2">
+      <div className="flex gap-4">
         <button
-          onClick={addTextWatermark}
-          className="bg-blue-500 text-white px-4 py-2"
+          onClick={addWatermark}
+          className="bg-blue-500 text-white px-4 py-2 rounded"
         >
-          Add Text Watermark
+          Add Watermark
         </button>
         <button
           onClick={downloadImage}
-          className="bg-green-500 text-white px-4 py-2"
+          className="bg-green-500 text-white px-4 py-2 rounded"
         >
           Download Image
         </button>
