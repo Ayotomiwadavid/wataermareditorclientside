@@ -133,8 +133,8 @@ const WatermarkEditor = () => {
 
 
   return (
-    <main className="w-full flex items-start justify-center px-[15px] mt-[100px] h-lvh">
-      <section className="w-[95%] px-4 h-full">
+    <main className="w-full flex md:flex-row flex-col items-start justify-center px-[15px] mt-[220px] md:mt-[100px] h-lvh">
+      <section className="md:w-[95%] w-full px-2 md:px-4 h-full">
         <canvas
           ref={canvasRef}
           onMouseDown={handleMouseDown}
@@ -142,14 +142,14 @@ const WatermarkEditor = () => {
           onMouseUp={handleMouseUp}
           style={{ border: "1px solid black", cursor: "move", width: '100%', height: '500px', }}
         ></canvas>
-        <div className="w-full flex items-center justify-center">
+        <div className="w-full flex md:flex-row flex-col py-4 md:py-0 items-start md:items-center justify-center">
           <input type="file" onChange={handleImageUpload} />
-          <button className="bg-green-400 border-none h-[50px] w-[180px] rounded-md text-white outline-none m-3" onClick={downloadImage}>Download Image</button>
+          <button className="bg-green-400 border-none h-[50px] w-[180px] rounded-md text-white outline-none mt-3 md:m-3" onClick={downloadImage}>Download Image</button>
         </div>
       </section>
 
       {/** Elements Editor */}
-      <aside className="w-[25%] h-[500px] border border-Vibrant-sky-blue px-2 py-4 flex flex-col items-start justify-start gap-4">
+      <aside className="md:w-[25%] w-full h-[500px] border border-Vibrant-sky-blue px-2 py-4 flex flex-col items-start justify-start gap-4">
         <input
           type="text"
           value={watermarkText}
