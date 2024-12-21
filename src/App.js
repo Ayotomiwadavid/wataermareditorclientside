@@ -11,8 +11,7 @@ const App = () => {
     <Router>
       <Routes>
         <Route path="/" element={<Landing />} />
-        <Route path="/editor/:page" element={<Dashboard />} />
-        {/* <Route path='/auth' element={<Auth />} /> */}
+        <Route path="/editor" element={<Dashboard />} />
         <Route path="*" element={<Notfound />} />
       </Routes>
     </Router>

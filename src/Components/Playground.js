@@ -1,175 +1,220 @@
 import React, { useRef, useState, useEffect } from "react";
-import * as fabric from "fabric";
 
 const WatermarkEditor = () => {
   const canvasRef = useRef(null);
-  const [canvas, setCanvas] = useState(null);
-  const [isImageUploaded, setIsImageUploaded] = useState(false);
-  const [watermarkSettings, setWatermarkSettings] = useState({
-    text: "Your Watermark",
-    fontSize: 30,
-    fill: "#000000",
-  });
+  const [uploadedImage, setUploadedImage] = useState(null);
+  const [watermarkText, setWatermarkText] = useState("Sample Watermark");
+  const [watermarkImage, setWatermarkImage] = useState(null);
+  const [textPosition, setTextPosition] = useState({ x: 50, y: 50 });
+  const [imagePosition, setImagePosition] = useState({ x: 150, y: 150 });
+  const [draggingElement, setDraggingElement] = useState(null);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const [textSize, setTextSize] = useState(30);
+  const [imageSize, setImageSize] = useState({ width: 100, height: 100 });
+  const [textColor, setTextColor] = useState("rgba(0, 0, 0, 0.5)");
 
-  // Initialize canvas
   useEffect(() => {
-    const fabricCanvas = new fabric.Canvas(canvasRef.current, {
-      width: 800,
-      height: 500,
-      backgroundColor: "#f0f0f0",
-    });
-    setCanvas(fabricCanvas);
-    return () => fabricCanvas.dispose();
-  }, []);
+    renderCanvas();
+  }, [
+    uploadedImage,
+    watermarkText,
+    watermarkImage,
+    textPosition,
+    imagePosition,
+    textSize,
+    imageSize,
+    textColor,
+  ]);
 
-  // Handle image upload
-  const handleImageUpload = (e) => {
-    const file = e.target.files[0];
-    if (file && file.type.startsWith("image/")) {
-      const reader = new FileReader();
+  const handleImageUpload = (event) => {
+    const file = event.target.files[0];
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => setUploadedImage(img);
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
 
-      reader.onload = () => {
-        const dataUrl = reader.result;
+  const handleWatermarkImageUpload = (event) => {
+    const file = event.target.files[0];
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => setWatermarkImage(img);
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
 
-        fabric.Image.fromURL(dataUrl, (img) => {
-          canvas.clear();
-          const scaleRatio = Math.min(
-            canvas.width / img.width,
-            canvas.height / img.height
-          );
-          img.scale(scaleRatio);
-          canvas.add(img);
-          img.set({ selectable: false }); // Prevent image movement
-          canvas.sendToBack(img);
-          setIsImageUploaded(true);
-          canvas.renderAll();
-        });
-      };
+  const renderCanvas = () => {
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
 
-      reader.readAsDataURL(file);
-    } else {
-      alert("Please upload a valid image file (e.g., .jpg, .png).");
+    canvas.width = 800;
+    canvas.height = 600;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (uploadedImage) {
+      ctx.drawImage(uploadedImage, 0, 0, canvas.width, canvas.height);
+    }
+
+    if (watermarkText) {
+      ctx.font = `${textSize}px Arial`;
+      ctx.fillStyle = textColor;
+      ctx.fillText(watermarkText, textPosition.x, textPosition.y);
+    }
+
+    if (watermarkImage) {
+      ctx.drawImage(
+        watermarkImage,
+        imagePosition.x,
+        imagePosition.y,
+        imageSize.width,
+        imageSize.height
+      );
     }
   };
 
-  // Handle watermark settings change
-  const handleWatermarkChange = (e) => {
-    const { name, value } = e.target;
-    setWatermarkSettings((prev) => ({
-      ...prev,
-      [name]: name === "fontSize" ? parseInt(value, 10) : value,
-    }));
-  };
+  const handleMouseDown = (event) => {
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
 
-  // Add watermark
-  const addWatermark = () => {
-    if (!isImageUploaded) {
-      alert("Please upload an image before adding a watermark.");
-      return;
+    if (
+      x > textPosition.x &&
+      x < textPosition.x + 200 &&
+      y > textPosition.y - textSize &&
+      y < textPosition.y
+    ) {
+      setDraggingElement("text");
+      setOffset({ x: x - textPosition.x, y: y - textPosition.y });
+    } else if (
+      watermarkImage &&
+      x > imagePosition.x &&
+      x < imagePosition.x + imageSize.width &&
+      y > imagePosition.y &&
+      y < imagePosition.y + imageSize.height
+    ) {
+      setDraggingElement("image");
+      setOffset({ x: x - imagePosition.x, y: y - imagePosition.y });
     }
-
-    const { text, fontSize, fill } = watermarkSettings;
-
-    const watermark = new fabric.Textbox(text, {
-      left: 50,
-      top: 50,
-      fontSize,
-      fill,
-      selectable: true,
-    });
-
-    canvas.add(watermark);
-    canvas.setActiveObject(watermark);
-    canvas.renderAll();
   };
 
-  // Download final image
+  const handleMouseMove = (event) => {
+    if (!draggingElement) return;
+
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+
+    if (draggingElement === "text") {
+      setTextPosition({ x: x - offset.x, y: y - offset.y });
+    } else if (draggingElement === "image") {
+      setImagePosition({ x: x - offset.x, y: y - offset.y });
+    }
+  };
+
+  const handleMouseUp = () => {
+    setDraggingElement(null);
+  };
+
   const downloadImage = () => {
-    if (!isImageUploaded) {
-      alert("Please upload an image before downloading.");
-      return;
-    }
-
-    const dataURL = canvas.toDataURL({
-      format: "png",
-      quality: 1.0,
-    });
-
+    const canvas = canvasRef.current;
     const link = document.createElement("a");
-    link.href = dataURL;
     link.download = "watermarked-image.png";
+    link.href = canvas.toDataURL();
     link.click();
   };
 
+
   return (
-    <div className="flex flex-col items-center p-6">
-      <h1 className="text-2xl font-bold mb-4">Watermark Editor</h1>
+    <main className="w-full flex md:flex-row flex-col items-start justify-center px-[15px] mt-[220px] md:mt-[100px] h-lvh">
+      <section className="md:w-[95%] w-full px-2 md:px-4 h-full">
+        <canvas
+          ref={canvasRef}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          style={{ border: "1px solid black", cursor: "move", width: '100%', height: '500px', }}
+        ></canvas>
+        <div className="w-full flex md:flex-row flex-col py-4 md:py-0 items-start md:items-center justify-center">
+          <input type="file" onChange={handleImageUpload} />
+          <button className="bg-green-400 border-none h-[50px] w-[180px] rounded-md text-white outline-none mt-3 md:m-3" onClick={downloadImage}>Download Image</button>
+        </div>
+      </section>
 
-      {/* Upload Image */}
-      <div className="mb-4">
+      {/** Elements Editor */}
+      <aside className="md:w-[25%] w-full h-[500px] border border-Vibrant-sky-blue px-2 py-4 flex flex-col items-start justify-start gap-4">
         <input
-          type="file"
-          accept="image/*"
-          onChange={handleImageUpload}
-          className="border p-2"
+          type="text"
+          value={watermarkText}
+          onChange={(e) => setWatermarkText(e.target.value)}
+          placeholder="Enter watermark text"
+          className="w-full"
         />
-      </div>
 
-      {/* Canvas */}
-      <div className="mb-4 border-2 border-gray-300">
-        <canvas ref={canvasRef} />
-      </div>
+        <div className="flex flex-col w-full items-start justify-center gap-3">
+          <label htmlFor="watermarkImageFile">Watermark Image:</label>
+          <input name="watermarkImageFile" id="watermarkImageFile" type="file" onChange={handleWatermarkImageUpload} />
+        </div>
 
-      {/* Watermark Controls */}
-      <div className="flex flex-col gap-2 mb-4">
         <div>
-          <label>Watermark Text:</label>
+          <label>Text Size: </label>
           <input
-            type="text"
-            name="text"
-            value={watermarkSettings.text}
-            onChange={handleWatermarkChange}
-            className="border p-1 ml-2"
+            type="range"
+            min="10"
+            max="100"
+            value={textSize}
+            onChange={(e) => setTextSize(parseInt(e.target.value))}
           />
         </div>
+
         <div>
-          <label>Font Size:</label>
-          <input
-            type="number"
-            name="fontSize"
-            value={watermarkSettings.fontSize}
-            onChange={handleWatermarkChange}
-            className="border p-1 ml-2"
-          />
-        </div>
-        <div>
-          <label>Color:</label>
+          <label>Text Color: </label>
           <input
             type="color"
-            name="fill"
-            value={watermarkSettings.fill}
-            onChange={handleWatermarkChange}
-            className="ml-2"
+            value={textColor}
+            onChange={(e) => setTextColor(e.target.value)}
           />
         </div>
-      </div>
 
-      {/* Buttons */}
-      <div className="flex gap-4">
-        <button
-          onClick={addWatermark}
-          className="bg-blue-500 text-white px-4 py-2 rounded"
-        >
-          Add Watermark
-        </button>
-        <button
-          onClick={downloadImage}
-          className="bg-green-500 text-white px-4 py-2 rounded"
-        >
-          Download Image
-        </button>
-      </div>
-    </div>
+        {/** Width and Height */}
+
+        <div className="flex flex-col">
+          <div>
+            <label>Image Width: </label>
+            <input
+              type="range"
+              min="50"
+              max="300"
+              value={imageSize.width}
+              onChange={(e) =>
+                setImageSize((size) => ({ ...size, width: parseInt(e.target.value) }))
+              }
+            />
+          </div>
+
+          <div>
+            <label>Image Height: </label>
+            <input
+              type="range"
+              min="50"
+              max="300"
+              value={imageSize.height}
+              onChange={(e) =>
+                setImageSize((size) => ({ ...size, height: parseInt(e.target.value) }))
+              }
+            />
+          </div>
+        </div>
+
+      </aside>
+    </main>
   );
 };
 
