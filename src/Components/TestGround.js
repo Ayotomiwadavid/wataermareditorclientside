@@ -184,7 +184,7 @@ const WatermarkEditor = () => {
     );
 
     return (
-        <div className="max-w-4xl mt-4 md:mt-28 mx-auto p-4">
+        <div className="max-w-4xl mt-16 md:mt-28 mx-auto p-4">
 
             <div className="relative">
                 <div
@@ -200,7 +200,7 @@ const WatermarkEditor = () => {
                             ref={baseImageRef}
                             src={baseImage}
                             alt="Base"
-                            className="w-full h-full object-contain"
+                            className="w-full h-full md:w-full md:h-full object-contain"
                         />
                     )}
 
@@ -249,24 +249,22 @@ const WatermarkEditor = () => {
 
             </div>
 
-            <div className="mt-4 flex items-center justify-between">
-                <div className="text-gray-500 flex items-center gap-2">
-                    <LucideMove size={20} />
-                    <span>Click and drag or use arrow buttons to position the watermark</span>
+            <div>
+            {baseImage && (
+                <div className="mt-2 text-sm text-gray-500 text-center">
+                    Position: X: {position.x.toFixed(1)}%, Y: {position.y.toFixed(1)}%
                 </div>
-
-                {baseImage && (
-                    <button
-                        onClick={handleDownload}
-                        className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-                    >
-                        <LucideDownload size={20} />
-                        Download
-                    </button>
-                )}
+            )}
             </div>
 
-            <div>
+            <div className="mt-4 flex flex-col text-center items-center justify-between">
+                <div className="text-gray-500 flex items-center gap-2">
+                    <LucideMove size={20} />
+                    <span className='text-xs md:text-md'>Click and drag or use arrow buttons to position the watermark</span>
+                </div>
+            </div>
+
+            <div className='flex w-full items-center justify-between mt-2'>
                 {/* Nudge Controls */}
                 {baseImage && (
                     <div className="flex gap-1">
@@ -278,9 +276,20 @@ const WatermarkEditor = () => {
                         <NudgeButton direction="down" icon={LucideArrowDown} />
                     </div>
                 )}
+
+
+                {baseImage && (
+                    <button
+                        onClick={handleDownload}
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                    >
+                        <LucideDownload size={20} />
+                        Save
+                    </button>
+                )}
             </div>
 
-            <div className="my-10 space-y-4">
+            <div className="my-6 space-y-4">
                 <div className="flex gap-4">
                     <button
                         onClick={() => setWatermarkType('text')}
@@ -375,11 +384,7 @@ const WatermarkEditor = () => {
 
 
             {/* Position Display */}
-            {baseImage && (
-                <div className="mt-2 text-sm text-gray-500 text-center">
-                    Position: X: {position.x.toFixed(1)}%, Y: {position.y.toFixed(1)}%
-                </div>
-            )}
+            
         </div>
     );
 };
