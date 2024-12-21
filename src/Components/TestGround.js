@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { Upload, Type, Image, Move, Download } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { LucideUpload, LucideType, LucideImage, LucideMove, LucideDownload, LucideArrowUp, LucideArrowDown, LucideArrowLeft, LucideArrowRight } from 'lucide-react';
 
 const WatermarkEditor = () => {
     const [baseImage, setBaseImage] = useState(null);
@@ -66,151 +66,235 @@ const WatermarkEditor = () => {
         setIsDragging(false);
     };
 
-    const handleDownload = () => {
+    const handleNudge = (direction) => {
+        const nudgeAmount = 1; // 1% of the container size
+        setPosition(prev => {
+            const newPos = { ...prev };
+
+            switch (direction) {
+                case 'up':
+                    newPos.y = Math.max(0, prev.y - nudgeAmount);
+                    break;
+                case 'down':
+                    newPos.y = Math.min(100, prev.y + nudgeAmount);
+                    break;
+                case 'left':
+                    newPos.x = Math.max(0, prev.x - nudgeAmount);
+                    break;
+                case 'right':
+                    newPos.x = Math.min(100, prev.x + nudgeAmount);
+                    break;
+            }
+
+            return newPos;
+        });
+    };
+
+    const handleDownload = async () => {
         if (!baseImage) return;
 
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
 
-        // Create a temporary image to get the original dimensions
-        const img = new Image();
-        img.onload = () => {
-            // Set canvas size to match original image
-            canvas.width = img.width;
-            canvas.height = img.height;
+        // Create and load the base image
+        const baseImg = new Image();
+        baseImg.crossOrigin = 'anonymous';
 
-            // Draw base image
-            ctx.drawImage(img, 0, 0);
+        // Create a promise to handle base image loading
+        const loadBaseImage = new Promise((resolve) => {
+            baseImg.onload = () => {
+                canvas.width = baseImg.width;
+                canvas.height = baseImg.height;
+                ctx.drawImage(baseImg, 0, 0);
+                resolve();
+            };
+        });
 
-            // Add watermark
-            if (watermarkType === 'text') {
-                // Configure text style
-                ctx.fillStyle = textStyle.color;
-                let font = textStyle.fontSize + 'px ' + textStyle.fontFamily;
-                if (textStyle.isBold) font = 'bold ' + font;
-                if (textStyle.isItalic) font = 'italic ' + font;
-                ctx.font = font;
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
+        // Load base image
+        baseImg.src = baseImage;
+        await loadBaseImage;
 
-                // Calculate position
-                const x = (position.x / 100) * canvas.width;
-                const y = (position.y / 100) * canvas.height;
+        // Function to add text watermark
+        const addTextWatermark = () => {
+            ctx.fillStyle = textStyle.color;
+            let font = `${textStyle.isBold ? 'bold ' : ''}${textStyle.isItalic ? 'italic ' : ''}${textStyle.fontSize}px ${textStyle.fontFamily}`;
+            ctx.font = font;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
 
-                // Draw text
-                ctx.fillText(watermarkText, x, y);
-            } else if (watermarkType === 'image' && watermarkImage) {
-                // Draw image watermark
-                const watermarkImg = new Image();
-                watermarkImg.onload = () => {
-                    const watermarkWidth = 100; // Fixed width for watermark
-                    const ratio = watermarkImg.height / watermarkImg.width;
-                    const watermarkHeight = watermarkWidth * ratio;
-
-                    const x = ((position.x / 100) * canvas.width) - (watermarkWidth / 2);
-                    const y = ((position.y / 100) * canvas.height) - (watermarkHeight / 2);
-
-                    ctx.drawImage(watermarkImg, x, y, watermarkWidth, watermarkHeight);
-
-                    // Create download link
-                    const link = document.createElement('a');
-                    link.download = 'watermarked-image.png';
-                    link.href = canvas.toDataURL('image/png');
-                    link.click();
-                };
-                watermarkImg.src = watermarkImage;
-            } else {
-                // If no watermark, just download the original image
-                const link = document.createElement('a');
-                link.download = 'watermarked-image.png';
-                link.href = canvas.toDataURL('image/png');
-                link.click();
-            }
+            const x = (position.x / 100) * canvas.width;
+            const y = (position.y / 100) * canvas.height;
+            ctx.fillText(watermarkText, x, y);
         };
-        img.src = baseImage;
+
+        // Function to add image watermark
+        const addImageWatermark = () => {
+            return new Promise((resolve) => {
+                if (watermarkImage) {
+                    const watermarkImg = new Image();
+                    watermarkImg.crossOrigin = 'anonymous';
+                    watermarkImg.onload = () => {
+                        const watermarkWidth = Math.min(canvas.width * 0.3, 300); // Limit watermark size
+                        const aspectRatio = watermarkImg.height / watermarkImg.width;
+                        const watermarkHeight = watermarkWidth * aspectRatio;
+
+                        const x = ((position.x / 100) * canvas.width) - (watermarkWidth / 2);
+                        const y = ((position.y / 100) * canvas.height) - (watermarkHeight / 2);
+
+                        ctx.drawImage(watermarkImg, x, y, watermarkWidth, watermarkHeight);
+                        resolve();
+                    };
+                    watermarkImg.src = watermarkImage;
+                } else {
+                    resolve();
+                }
+            });
+        };
+
+        try {
+            // Add appropriate watermark based on type
+            if (watermarkType === 'text') {
+                addTextWatermark();
+            } else if (watermarkType === 'image') {
+                await addImageWatermark();
+            }
+
+            // Create and trigger download
+            const link = document.createElement('a');
+            link.download = 'watermarked-image.png';
+            link.href = canvas.toDataURL('image/png', 1.0);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } catch (error) {
+            console.error('Error creating watermarked image:', error);
+            alert('There was an error creating the watermarked image. Please try again.');
+        }
     };
 
+    // Create a Nudge Button component for reusability
+    const NudgeButton = ({ direction, icon: Icon }) => (
+        <button
+            onClick={() => handleNudge(direction)}
+            className="p-2 hover:bg-gray-100 rounded"
+            aria-label={`Move watermark ${direction}`}
+        >
+            <Icon size={20} />
+        </button>
+    );
+
     return (
-        <div className="max-w-4xl mx-auto p-4 mt-28">
-            <div
-                ref={containerRef}
-                className="relative w-full aspect-video bg-gray-100 rounded overflow-hidden cursor-move"
-                onMouseDown={handleMouseDown}
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUp}
-                onMouseLeave={handleMouseUp}
-            >
-                {baseImage && (
-                    <img
-                        ref={baseImageRef}
-                        src={baseImage}
-                        alt="Base"
-                        className="w-full h-full object-contain"
-                    />
-                )}
+        <div className="max-w-4xl mt-4 md:mt-28 mx-auto p-4">
 
-                {baseImage && watermarkType === 'text' && (
-                    <div
-                        style={{
-                            left: `${position.x}%`,
-                            top: `${position.y}%`,
-                            transform: 'translate(-50%, -50%)',
-                            color: textStyle.color,
-                            fontSize: `${textStyle.fontSize}px`,
-                            fontFamily: textStyle.fontFamily,
-                            fontWeight: textStyle.isBold ? 'bold' : 'normal',
-                            fontStyle: textStyle.isItalic ? 'italic' : 'normal',
-                        }}
-                        className="absolute select-none pointer-events-none"
-                    >
-                        {watermarkText}
-                    </div>
-                )}
+            <div className="relative">
+                <div
+                    ref={containerRef}
+                    className="relative w-full aspect-video bg-gray-100 rounded overflow-hidden cursor-move"
+                    onMouseDown={handleMouseDown}
+                    onMouseMove={handleMouseMove}
+                    onMouseUp={handleMouseUp}
+                    onMouseLeave={handleMouseUp}
+                >
+                    {baseImage && (
+                        <img
+                            ref={baseImageRef}
+                            src={baseImage}
+                            alt="Base"
+                            className="w-full h-full object-contain"
+                        />
+                    )}
 
-                {baseImage && watermarkType === 'image' && watermarkImage && (
-                    <img
-                        ref={watermarkImageRef}
-                        src={watermarkImage}
-                        alt="Watermark"
-                        style={{
-                            left: `${position.x}%`,
-                            top: `${position.y}%`,
-                            transform: 'translate(-50%, -50%)',
-                        }}
-                        className="absolute w-24 h-24 object-contain select-none pointer-events-none"
-                    />
-                )}
-
-                {!baseImage && (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="text-center text-gray-500">
-                            <Upload size={48} className="mx-auto mb-2" />
-                            <p>Upload an image to begin</p>
+                    {baseImage && watermarkType === 'text' && (
+                        <div
+                            style={{
+                                left: `${position.x}%`,
+                                top: `${position.y}%`,
+                                transform: 'translate(-50%, -50%)',
+                                color: textStyle.color,
+                                fontSize: `${textStyle.fontSize}px`,
+                                fontFamily: textStyle.fontFamily,
+                                fontWeight: textStyle.isBold ? 'bold' : 'normal',
+                                fontStyle: textStyle.isItalic ? 'italic' : 'normal',
+                            }}
+                            className="absolute select-none pointer-events-none"
+                        >
+                            {watermarkText}
                         </div>
+                    )}
+
+                    {baseImage && watermarkType === 'image' && watermarkImage && (
+                        <img
+                            ref={watermarkImageRef}
+                            src={watermarkImage}
+                            alt="Watermark"
+                            style={{
+                                left: `${position.x}%`,
+                                top: `${position.y}%`,
+                                transform: 'translate(-50%, -50%)',
+                            }}
+                            className="absolute w-24 h-24 object-contain select-none pointer-events-none"
+                        />
+                    )}
+
+                    {!baseImage && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="text-center text-gray-500">
+                                <LucideUpload size={48} className="mx-auto mb-2" />
+                                <p>Upload an image to begin</p>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+
+            </div>
+
+            <div className="mt-4 flex items-center justify-between">
+                <div className="text-gray-500 flex items-center gap-2">
+                    <LucideMove size={20} />
+                    <span>Click and drag or use arrow buttons to position the watermark</span>
+                </div>
+
+                {baseImage && (
+                    <button
+                        onClick={handleDownload}
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                    >
+                        <LucideDownload size={20} />
+                        Download
+                    </button>
+                )}
+            </div>
+
+            <div>
+                {/* Nudge Controls */}
+                {baseImage && (
+                    <div className="flex gap-1">
+                        <NudgeButton direction="up" icon={LucideArrowUp} />
+                        <div className="flex justify-start gap-1">
+                            <NudgeButton direction="left" icon={LucideArrowLeft} />
+                            <NudgeButton direction="right" icon={LucideArrowRight} />
+                        </div>
+                        <NudgeButton direction="down" icon={LucideArrowDown} />
                     </div>
                 )}
             </div>
 
-            <div className="text-gray-500 mt-2 justify-center flex items-center gap-2">
-                <Move size={20} />
-                <span>Click and drag to position the watermark</span>
-            </div>
-
-            <div className="my-8 space-y-4">
+            <div className="my-10 space-y-4">
                 <div className="flex gap-4">
                     <button
                         onClick={() => setWatermarkType('text')}
                         className={`flex items-center gap-2 px-4 py-2 rounded ${watermarkType === 'text' ? 'bg-blue-500 text-white' : 'bg-gray-200'
                             }`}
                     >
-                        <Type size={20} /> Text Watermark
+                        <LucideType size={20} /> Text Watermark
                     </button>
                     <button
                         onClick={() => setWatermarkType('image')}
                         className={`flex items-center gap-2 px-4 py-2 rounded ${watermarkType === 'image' ? 'bg-blue-500 text-white' : 'bg-gray-200'
                             }`}
                     >
-                        <Image size={20} /> Image Watermark
+                        <LucideImage size={20} /> Image Watermark
                     </button>
                 </div>
 
@@ -290,20 +374,12 @@ const WatermarkEditor = () => {
             </div>
 
 
-
-            <div className="mt-4 flex items-center justify-between">
-
-
-                {baseImage && (
-                    <button
-                        onClick={handleDownload}
-                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-600"
-                    >
-                        {/* <Download size={20} /> */}
-                        Download
-                    </button>
-                )}
-            </div>
+            {/* Position Display */}
+            {baseImage && (
+                <div className="mt-2 text-sm text-gray-500 text-center">
+                    Position: X: {position.x.toFixed(1)}%, Y: {position.y.toFixed(1)}%
+                </div>
+            )}
         </div>
     );
 };
