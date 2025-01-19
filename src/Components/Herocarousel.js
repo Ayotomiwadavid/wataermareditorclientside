@@ -1,11 +1,4 @@
 import React from 'react'
-import { Carousel } from 'flowbite-react'
-import Pic1 from '../Assets/Pic1.jpg'
-import pic2 from '../Assets/Pic2.jpg'
-import pic3 from '../Assets/Pic3.jpg'
-import pic4 from '../Assets/Pic4.jpg'
-import pic5 from '../Assets/Pic5.jpg'
-import Button from './Formfields/Button'
 import { Link } from 'react-router-dom'
 
 const Herocarousel = () => {

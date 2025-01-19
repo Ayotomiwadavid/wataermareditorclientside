@@ -3,7 +3,7 @@ import Landing from './Pages/Landing'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Notfound from './Pages/Notfound';
 import Dashboard from './Pages/Dashboard';
-import Auth from './Pages/Auth';
+
 
 const App = () => {
   return (
