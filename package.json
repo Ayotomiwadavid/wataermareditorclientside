@@ -8,8 +8,10 @@
     "flowbite-react": "^0.10.2",
     "framer-motion": "^11.14.4",
     "html2canvas": "^1.4.1",
+    "lucide-react": "^0.469.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-draggable": "^4.4.6",
     "react-router-dom": "^7.0.2",
     "react-scripts": "5.0.1",
     "swiper": "^11.1.15"
