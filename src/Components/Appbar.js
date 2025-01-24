@@ -13,7 +13,7 @@ const Appbar = () => {
     <main className='w-full z-50 flex items-center justify-between px-[15px] md:px-[5vw] fixed top-0 bg-Deep-navy-blue py-2 md:py-4 shadow-2xl'>
       <aside className='flex items-center justify-center'>
         <img src={Logo} alt='logo' className='w-9 h-9 md:w-12 md:h-12' />
-        <h1 className='font-bold capitalize text-md md:text-xl text-Pure-white'>StreamMark</h1>
+        <h1 className='font-bold capitalize text-md md:text-xl text-Pure-white'>Yougurd Editor</h1>
       </aside>
       <section className={pathname === '/editor' ? 'hidden items-center justify-center gap-5': 'flex items-center justify-center gap-5'}>
         <Link to='/editor'>
